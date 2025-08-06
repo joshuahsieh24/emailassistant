@@ -1,0 +1,54 @@
+<template>
+    <lightning-card title="AI Email Assistant (Gateway Test)" icon-name="standard:email">
+        <div class="slds-p-around_medium">
+            <div class="slds-grid slds-gutters slds-m-bottom_medium">
+                <div class="slds-col">
+                    <lightning-combobox
+                        name="emailType"
+                        label="Email Type"
+                        value={emailType}
+                        placeholder="Select email type"
+                        options={emailTypeOptions}
+                        onchange={handleEmailTypeChange}
+                        class="slds-m-bottom_small">
+                    </lightning-combobox>
+                </div>
+                <div class="slds-col slds-align-bottom">
+                    <lightning-button
+                        variant="brand"
+                        label="Generate Email Draft (Gateway Test)"
+                        onclick={generateDraft}
+                        disabled={isGenerating}
+                        class="slds-m-bottom_small">
+                    </lightning-button>
+                </div>
+            </div>
+
+            <div if:true={isGenerating} class="slds-m-bottom_medium">
+                <lightning-spinner alternative-text="Generating email draft..." size="small"></lightning-spinner>
+                <span class="slds-m-left_small">Generating email draft...</span>
+            </div>
+
+            <div if:true={showDraft}>
+                <div class="slds-m-bottom_medium"></div>
+                <lightning-input type="toggle" label="Read Only" checked={isReadOnly} onchange={handleReadOnlyToggle} class="slds-m-bottom_small"></lightning-input>
+                <textarea
+                    class="slds-textarea"
+                    style="min-height: 400px; resize: vertical; width: 100%;"
+                    onchange={handleDraftChange}
+                    rows="30"
+                    readonly={isReadOnly}
+                >
+                    {emailDraft}
+                </textarea>
+
+                <lightning-button
+                    variant="neutral"
+                    label="Copy to Clipboard"
+                    onclick={copyToClipboard}
+                    class="slds-m-right_small">
+                </lightning-button>
+            </div>
+        </div>
+    </lightning-card>
+</template> 

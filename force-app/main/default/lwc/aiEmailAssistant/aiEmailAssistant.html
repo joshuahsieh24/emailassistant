@@ -1,6 +1,7 @@
 <template>
     <lightning-card title="AI Email Assistant" icon-name="standard:email">
         <div class="slds-m-around_medium">
+            <!-- Email Type Selection -->
             <lightning-combobox
                 name="emailType"
                 label="Email Type"
@@ -10,37 +11,148 @@
                 class="slds-m-bottom_small">
             </lightning-combobox>
 
-            <lightning-button
-                variant="brand"
-                label="Generate Email Draft"
-                onclick={generateDraft}
-                disabled={isGenerating}
-                class="slds-m-bottom_medium">
-            </lightning-button>
-
-            <div if:true={isGenerating} class="slds-m-bottom_medium">
-                <lightning-spinner alternative-text="Generating draft..." size="small"></lightning-spinner>
-                <p class="slds-m-top_small">Generating your email draft...</p>
-            </div>
-
-            <div if:true={showDraft}>
-                <div class="slds-m-bottom_medium"></div>
-                <lightning-input type="toggle" label="Read Only" checked={isReadOnly} onchange={handleReadOnlyToggle} class="slds-m-bottom_small"></lightning-input>
-                <textarea
-                    class="slds-textarea"
-                    style="min-height: 400px; resize: vertical; width: 100%;"
-                    onchange={handleDraftChange}
-                    rows="30"
-                    readonly={isReadOnly}>
-                    {emailDraft}
-                </textarea>
-
+            <!-- Action Buttons -->
+            <div class="slds-button-group slds-m-bottom_medium" role="group">
+                <lightning-button
+                    variant="brand"
+                    label="Generate Email Draft"
+                    onclick={generateDraft}
+                    disabled={isGenerating}
+                    icon-name="utility:magic_wand">
+                </lightning-button>
+                
                 <lightning-button
                     variant="neutral"
-                    label="Copy to Clipboard"
-                    onclick={copyToClipboard}
-                    class="slds-m-right_small">
+                    label="View Saved Drafts"
+                    onclick={loadSavedDrafts}
+                    disabled={isLoadingDrafts}
+                    icon-name="utility:inbox">
                 </lightning-button>
+            </div>
+
+
+
+            <!-- Generation Progress -->
+            <div if:true={isGenerating} class="slds-m-bottom_medium">
+                <lightning-spinner alternative-text="Generating draft..." size="small"></lightning-spinner>
+                <p class="slds-m-top_small slds-text-align_center">
+                    Generating your personalized email draft...
+                </p>
+            </div>
+
+            <!-- Loading Saved Drafts -->
+            <div if:true={isLoadingDrafts} class="slds-m-bottom_medium">
+                <lightning-spinner alternative-text="Loading drafts..." size="small"></lightning-spinner>
+                <p class="slds-m-top_small slds-text-align_center">Loading your saved drafts...</p>
+            </div>
+
+            <!-- Saved Drafts Modal -->
+            <div if:true={showSavedDrafts}>
+                <section role="dialog" tabindex="-1" class="slds-modal slds-fade-in-open">
+                    <div class="slds-modal__container">
+                        <header class="slds-modal__header">
+                            <button class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse" 
+                                    title="Close" onclick={hideSavedDrafts}>
+                                <lightning-icon icon-name="utility:close" size="small"></lightning-icon>
+                                <span class="slds-assistive-text">Close</span>
+                            </button>
+                            <h2 class="slds-modal__title slds-hyphenate">Saved Email Drafts</h2>
+                        </header>
+                        <div class="slds-modal__content slds-p-around_medium">
+                            <div if:false={hasSavedDrafts} class="slds-text-align_center slds-p-vertical_large">
+                                <lightning-icon icon-name="utility:inbox" size="large" class="slds-m-bottom_small"></lightning-icon>
+                                <p>No saved drafts found for this record.</p>
+                            </div>
+                            <div if:true={hasSavedDrafts}>
+                                <template for:each={savedDrafts} for:item="draft">
+                                    <div key={draft.Id} class="slds-box slds-box_x-small slds-m-bottom_small">
+                                        <div class="slds-grid slds-grid_align-spread">
+                                            <div class="slds-col slds-size_3-of-4">
+                                                <p class="slds-text-heading_small">{draft.Email_Type__c}</p>
+                                                <p class="slds-text-body_small slds-text-color_weak">{draft.formattedDate}</p>
+                                                <p class="slds-text-body_small slds-m-top_x-small">{draft.preview}</p>
+                                            </div>
+                                            <div class="slds-col slds-size_1-of-4 slds-text-align_right">
+                                                <lightning-button
+                                                    variant="brand"
+                                                    label="Use Draft"
+                                                    size="small"
+                                                    data-draft-id={draft.Id}
+                                                    onclick={useSavedDraft}>
+                                                </lightning-button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                <div class="slds-backdrop slds-backdrop_open"></div>
+            </div>
+
+            <!-- Email Draft Display -->
+            <div if:true={showDraft}>
+                <!-- Draft Controls -->
+                <div class="slds-grid slds-grid_align-spread slds-m-bottom_small">
+                    <div class="slds-col">
+                        <lightning-input 
+                            type="toggle" 
+                            label="Read Only" 
+                            checked={isReadOnly} 
+                            onchange={handleReadOnlyToggle}>
+                        </lightning-input>
+                    </div>
+                    <div class="slds-col slds-text-align_right">
+                        <span class="slds-text-body_small slds-text-color_weak">
+                            Words: {draftWordCount} | Characters: {draftCharCount}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Draft Content -->
+                <div class="slds-form-element">
+                    <label class="slds-form-element__label" for="email-draft">Email Draft</label>
+                    <div class="slds-form-element__control">
+                        <textarea
+                            id="email-draft"
+                            class="slds-textarea"
+                            style="min-height: 400px; resize: vertical; width: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; cursor: text;"
+                            onchange={handleDraftChange}
+                            oninput={handleDraftChange}
+                            rows="20"
+                            readonly={isReadOnly}
+                            placeholder="Your generated email draft will appear here...">{emailDraft}</textarea>
+                    </div>
+                </div>
+
+                <!-- Draft Actions -->
+                <div class="slds-button-group slds-m-top_medium" role="group">
+                    <lightning-button
+                        variant="success"
+                        label="Copy to Clipboard"
+                        onclick={copyToClipboard}
+                        icon-name="utility:copy"
+                        disabled={isEmailDraftEmpty}>
+                    </lightning-button>
+                    
+                    <lightning-button
+                        variant="neutral"
+                        label="Clear Draft"
+                        onclick={clearDraft}
+                        icon-name="utility:clear"
+                        disabled={isEmailDraftEmpty}>
+                    </lightning-button>
+                </div>
+
+                <!-- Draft Tips -->
+                <div class="slds-box slds-box_x-small slds-theme_info slds-m-top_medium">
+                    <lightning-icon icon-name="utility:info" size="x-small" class="slds-m-right_x-small"></lightning-icon>
+                    <span class="slds-text-body_small">
+                        <strong>Tip:</strong> Review and customize the generated content before sending. 
+                        Toggle "Read Only" off to edit the draft directly.
+                    </span>
+                </div>
             </div>
         </div>
     </lightning-card>
